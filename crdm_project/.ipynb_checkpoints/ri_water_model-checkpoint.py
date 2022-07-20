@@ -1,0 +1,408 @@
+import math
+import numpy as np
+import pandas as pd
+import scipy.optimize as sco
+import time
+
+#
+#  this package will be reguarly updated with additional models
+#
+
+
+# set the number of days per month
+def num_days_per_month(ym_tup):
+    
+    year = ym_tup[0]
+    month = ym_tup[1]
+    
+    dict_base = {
+        1: 31,
+        2: 28,
+        3: 31,
+        4: 30,
+        5: 31, 
+        6: 30, 
+        7: 31, 
+        8: 31,
+        9: 30,
+        10: 31, 
+        11: 30, 
+        12: 31
+    }
+    
+    if year%4 == 0:
+        dict_base.update({2: 29})
+    
+    return dict_base[month]
+
+
+# set a function to shift dates
+def date_shift(ym_tup, n_months):
+    y = ym_tup[0]
+    m = ym_tup[1]
+    
+    y_0 = y + (m - 1)/12
+    y_frac = n_months/12
+    y_1 = math.floor(y_0 + y_frac)
+    
+    m_1 = round((y_frac + y_0 - y_1)*12) + 1
+
+    return (y_1, m_1)
+
+
+
+
+# 
+def ri_water_resources_model(
+    df_in, 
+    dict_initial_states = {
+        "reservoir_storage_million_m3": 150, 
+        "groundwater_storage_million_m3": 14000
+    }, 
+    dict_parameters = {
+        "area_catchment_km2": 4000,
+        "costs_unmet_demand": [5, 1000, 1000],
+        "maximum_reservoir_outflow_m3s": 25,
+        "proportion_gw_discharge": 0.015,
+        "max_gw_discharge_m3s": 12.5,
+        "proportion_precip_runoff": 0.30,
+        "proportion_precip_infiltration": 0.70,
+        "proportion_agricultural_water_runoff": 0.4
+    }, 
+    # default values; levers can be incorporated later using df_in
+    dict_default_levers = {
+        "capacity_reservoir_million_m3": 300,
+        "increase_ag_efficiency_rate": 0,
+        "increase_mun_efficiency_rate": 0
+        "transmission_gw_ag_m3s": np.nan,
+        "transmission_gw_mun_m3s": 2.5,
+        "transmission_res_ag_m3s": 10,
+        "transmission_res_mun_m3s": 10,
+        "recylcing_proportion_mun": 0.2,
+        "wastewater_treatment_capacity_m3s": 0.5
+    }
+):
+    
+    # get time steps (ensure this is run ONLY for a single scenario)
+    df_in = df_in.sort_values(by = ["year", "month"]).reset_index(drop = True)
+    time_steps = range(0, len(df_in))
+    n_t = len(time_steps)
+    ym_tup_0 = (int(df_in["year"].iloc[0]), int(df_in["month"].iloc[0]))
+
+
+    # setup indices
+    inds_supply = [1, 2]
+    inds_demand = [1, 2, 3]
+    # stream flow requirements
+    inds_demand_sfr = [3]
+    inds_demand_no_sfr = [x for x in inds_demand if (x not in inds_demand_sfr)]
+
+    # get initial states
+    res_0 = max(dict_initial_states["reservoir_storage_million_m3"], 0)*1000000
+    gw_0 = max(dict_initial_states["groundwater_storage_million_m3"], 0)*1000000
+
+    
+    # get some parameter values
+    param_area_precip_catchment = max(dict_parameters["area_catchment_km2"], 0)
+    param_delta_discharge_prop = max(dict_parameters["proportion_gw_discharge"], 0)
+    param_max_groundwater_discharge = max(dict_parameters["max_gw_discharge_m3s"], 0)
+    param_max_reservoir_outflow = max(dict_parameters["maximum_reservoir_outflow_m3s"], 0)
+    param_omega_runoff_prop = max(dict_parameters["proportion_precip_runoff"], 0)
+    param_rho_gw_infiltration_prop = max(dict_parameters["proportion_precip_infiltration"], 0)
+    param_runoff_ag_prop = max(dict_parameters["proportion_agricultural_water_runoff"], 0)
+    # check and scale if there's an issue with summing over 1
+    sc_precip_prop = param_rho_gw_infiltration_prop + param_omega_runoff_prop
+    if sc_precip_prop > 1:
+        param_rho_gw_infiltration_prop = param_rho_gw_infiltration_prop/sc_precip_prop
+        param_omega_runoff_prop = param_omega_runoff_prop/sc_precip_prop
+
+    # get precip means and lookback values
+    df_precip_means = df_in[["month", "precipitation_mm"]].groupby(["month"]).agg({"month": "first", "precipitation_mm": "mean"}).reset_index(drop = True)
+    m_p1 = date_shift(ym_tup_0, -1)[1]
+    m_p2 = date_shift(ym_tup_0, -2)[1]
+    # previous precip based on averages
+    p_lb1 = float(df_precip_means[df_precip_means["month"] == m_p1]["precipitation_mm"].iloc[0])
+    p_lb2 = float(df_precip_means[df_precip_means["month"] == m_p2]["precipitation_mm"].iloc[0])
+
+    # get days per month vector
+    vec_dpm = np.array([num_days_per_month(tuple(x)) for x in np.array(df_in[["year", "month"]])])
+
+
+
+    ##  INITIALIZE OUTPUT TRACKING
+
+
+    # basic zero initialization for output values (overwrite in loop)
+    vec_0 = np.zeros(n_t)
+    # variables to track
+    vars_transmission = ["x_%s%s_m3"%(i,j) for i in inds_supply for j in inds_demand_no_sfr]
+    vars_demand = ["d_%s_m3"%(j) for j in inds_demand]
+    vars_supplied = ["s_%s_m3"%(j) for j in inds_demand]
+    vars_unmet_demand = ["u_%s_m3"%(j) for j in inds_demand]
+    vars_unmet_demand_proportion = ["u_%s_proportion"%(j) for j in inds_demand]
+    vars_release = ["r_m3"]
+    vars_return = ["f_%s_m3"%(j) for j in inds_demand_no_sfr]
+    vars_storage = ["groundwater_storage_m3", "reservoir_storage_m3", "reservoir_release_m3", "reservoir_spillage_m3"]
+    vars_other_transmission = ["gw_discharge_m3", "gw_recharge_m3", "precip_runoff_m3"]
+
+    # set the headers
+    header_out = vars_transmission + vars_demand + vars_supplied + vars_unmet_demand + vars_unmet_demand_proportion + vars_release + vars_return + vars_storage + vars_other_transmission
+    # initialize dictionary of indices
+    dict_running_var_indices = {}
+    for k in vars_storage:
+        dict_running_var_indices.update({k: header_out.index(k)})
+
+
+
+    # all results to track
+    array_vars_out = np.zeros((len(df_in), len(header_out)))
+
+
+
+    ##  GET SOME TIME SERIES INPUT DATA
+
+    # levers, which can be added via df_in, but default to a single value
+    dict_levers = {}
+    for k in list(dict_default_levers.keys()):
+        # crude units check
+        if "million_m3" in k:
+            scalar = 1000000
+        elif "m3s" in k:
+            scalar = vec_dpm*86400
+        else:
+            scalar = 1
+
+        if k in df_in.columns:
+            # note: can multiply by a scalar or vector of equal dimension since it's an np.array
+            dict_levers[k] = np.array(df_in[k])*scalar
+        else:
+            dict_levers[k] = dict_default_levers[k]*scalar*np.ones(n_t)
+            
+            
+    # inputs modified by levers (where applicable)
+    vec_precip = np.array(df_in["precipitation_mm"])
+    vec_flow = np.array(df_in["flow_m3s"])
+    vec_demand_agricultural = np.array(df_in["demand_agricultural_m3km2"])*np.array(df_in["area_ag_km2"])*(1 - np.array(df_in["increase_ag_efficiency_rate"]))
+    vec_demand_municipal = np.array(df_in["demand_municipal_m3p"])*np.array(df_in["population"])*(1 - np.array(df_in["increase_mun_efficiency_rate"]))
+    
+
+
+
+    t0 = time.time()
+    for t in time_steps:
+
+        #
+        # variable order in matrices:
+        # [x_11, x_12, x_21, x_22, u_1, u_2, u_3, r, f_1, f_2, f_2_aux]
+        #
+
+        ##  set the proportion of the catchment upstream of the reservoir
+        prop_catch_up = 0.25
+
+
+        ##  INPUT VARIABLES (everything in terms of m3)
+
+        # specificed values w/levers
+        p = vec_precip[t]
+        q = vec_flow[t]*vec_dpm[t]*86400
+        pvol_ag = p*float(df_in["area_ag_km2"].iloc[t])*1000
+        
+        d_1 = max(vec_demand_agricultural[t] - pvol_ag, 0)
+        
+        phi_2 = dict_levers["recylcing_proportion_mun"][t]
+        d_2 = vec_demand_municipal[t]/(1 + phi_2)
+
+
+        # flow constraints (m3/month)
+        fc_11 = dict_levers["transmission_gw_ag_m3s"][t]
+        fc_12 = dict_levers["transmission_gw_mun_m3s"][t]
+        fc_21 = dict_levers["transmission_res_ag_m3s"][t]
+        fc_22 = dict_levers["transmission_res_mun_m3s"][t]
+        # reservoir outflow
+        fc_res_out = param_max_reservoir_outflow*vec_dpm[t]*86400
+
+        # some scalars
+        a = param_area_precip_catchment*1000 # can be multipled by precip to give m3 as unit
+
+
+
+        ##  SET SOME CONSTRAINT MAXIMA
+
+        # lookbacks for storage and precipitation
+        if t == 0:
+            p_prev_1 = p_lb1
+            p_prev_2 = p_lb2
+            s1_prev = gw_0
+            s2_prev = res_0
+        else:
+            p_prev_1 = vec_precip[t - 1]
+            if t == 1:
+                p_prev_2 = p_lb1
+            else:
+                p_prev_2 = vec_precip[t - 2]
+
+            # note: during modeling loop, *everything* is in m3, so ignore the million m3 subscript for now
+            s1_prev = array_vars_out[t - 1, dict_running_var_indices["groundwater_storage_m3"]] 
+            s2_prev = array_vars_out[t - 1, dict_running_var_indices["reservoir_storage_m3"]]#$dict_out["groundwater_storage_million_m3"][t - 1]
+
+
+        ##  groundwater storage
+        recharge_gw = a*param_rho_gw_infiltration_prop*(p_prev_1/3 + 2*p_prev_2/3)
+        # calculate discharge
+        discharge_gw = min(param_max_groundwater_discharge*vec_dpm[t]*86400, s1_prev*param_delta_discharge_prop)
+
+        s1_hat = s1_prev - discharge_gw + recharge_gw
+        # set constraint
+        const_gw = s1_hat
+
+
+        ##  precipitation runoff — 50% above reservoir, 50% below
+        runoff_precip = p*a*param_omega_runoff_prop
+
+        ##  reservoir storage
+        s2_hat = s2_prev + q + runoff_precip*prop_catch_up
+        # account for loss from the reservoir (excluding ET)
+        res_seepage = s2_hat * 0.025
+        # reservoir constraint value
+        const_res = s2_hat - res_seepage
+        # reservoir storage capocity
+        capac_res = dict_levers["capacity_reservoir_million_m3"][t]
+        const_capac_res = capac_res - const_res
+
+
+        ##  downstream demand
+
+        # downstream demand - 70% of inflows
+        dem_downstream = 50000000#0.7*q
+        # release i
+        const_downstream = discharge_gw + runoff_precip*(1 - prop_catch_up) - dem_downstream
+
+
+        ##  wastewater treatment at municipal levelw
+
+        const_ww = dict_levers["wastewater_treatment_capacity_m3s"][t]
+
+
+
+        ##  CONSTRAINT MATRICES
+
+        # set positive restriction
+        submat_aleq_posvars = -np.identity(10).astype(int)
+        # set coefficients in A
+        A_leq = np.array([
+            # groundwater supply
+            [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            # reservoir supply
+            [0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0],
+            # reservoir capacity
+            [0, 0, -1, -1, 0, 0, 0, -1, 0, 0, 0],
+            # downstream demand (unmet demand plus the release)
+            [0, 0, 0, 0, 0, 0, -1, -1, -1, -1, 0],
+            # constraint on wastewater return to river from municipal source
+            [0, -1, 0, -1, 0, 0, 0, 0, 0, 1, 0]
+        ])
+        # set leq constraints
+        b_leq = np.array([
+            const_gw,
+            const_res,
+            const_capac_res,
+            const_downstream,
+            0
+        ])
+
+
+        # set the outflow limit
+        if const_res <= 0.3*capac_res:
+            res_out_ub = fc_res_out/10
+            # buffer
+        elif const_res <= capac_res:
+            res_out_ub = fc_res_out
+        else:
+            res_out_ub = const_res#None
+
+        # set the variable bounds
+        bounds = [(0, fc_11), (0, fc_12), (0, fc_21), (0, fc_22), (0, d_1), (0, d_2), (0, dem_downstream), (0, res_out_ub), (0, d_1*param_runoff_ag_prop), (0, const_ww), (0, None)]
+
+        ##  add in some equality constraints
+
+        # equality constraints
+        A_eq = np.array([
+            # agricultural demand
+            [1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0],
+            # municipal demand
+            [0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0],
+            # agricultural runoff
+            [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
+            # municipal return flow
+            [0, 1, 0, 1, 0, 0, 0, 0, 0, -1, -1]
+        ])
+        # b matrix
+        b_eq = np.array([d_1, d_2, pvol_ag*param_runoff_ag_prop, 0])
+
+
+        # vector c — minimize unmet demand, but cost it. Unmet demand at the munic
+        costs = dict_parameters["costs_unmet_demand"]
+        c = np.array([0, 0, 0, 0] + list(dict_parameters["costs_unmet_demand"]) + [0, 0, 0, 1])
+        # get results
+        res = sco.linprog(c, A_leq, b_leq, A_eq, b_eq, bounds = bounds, method = "revised simplex")
+        x = res["x"]
+
+
+        # update output vector
+        vec_out_demand = np.array([
+            d_1, 
+            d_2, 
+            dem_downstream
+        ] )
+        vec_out_supplied = np.array([
+            x[0] + x[2], 
+            x[1] + x[3], 
+            np.dot(x[6:10], np.array([1, 1, param_runoff_ag_prop, 1]))
+        ])
+
+        vec_out_unmet = x[4:7]
+        vec_out_unmet_prop = vec_out_unmet/vec_out_demand
+        vec_out_other_transmission = np.array([discharge_gw, recharge_gw, runoff_precip])
+
+
+        # get current storage
+        s1_cur = s1_hat - x[0] - x[1]
+        s2_cur = const_res - x[2] - x[3] - x[7]
+        # reservoir release
+        release = min(fc_res_out, x[7])
+        spill = max(0, x[7] - release)
+
+        # for the RDM effect!
+        time.sleep(0.01)
+        # new row
+        out_vec = np.concatenate([
+            x[0:4], 
+            vec_out_demand, 
+            vec_out_supplied,
+            vec_out_unmet,
+            vec_out_unmet_prop,
+            x[7:10],
+            np.array([s1_cur, s2_cur, release, spill]),
+            vec_out_other_transmission
+        ])
+        # add to output array
+        array_vars_out[t] = out_vec
+    # add date information
+    df_out = pd.DataFrame(array_vars_out, columns = header_out)
+    df_out = pd.concat([df_in[["year", "month"]], df_out], axis = 1)
+    t1 = time.time()  
+    print("RI model done")
+    
+    return df_out
+
+    
+        
+        
+        
+    
+    
+    
+    
+
+
+
