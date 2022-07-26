@@ -1,15 +1,17 @@
 import os, os.path
 
-
 ##  analytical staging - these might be shared across files
 
 # set a name for this run (good for a configuration file)
-analysis_name = "crdm_project_20210915"
+analysis_name = "crdm_project_2021091"
 # export images (good for a configuration file)?
 export_image_q = False
 # model years
 model_historical_years = list(range(2011, 2021))
 model_projection_years = list(range(2021, 2056))
+# set some climate info
+range_delta_base = list(range(2011, 2021))
+range_delta_fut = list(range(2046, 2056))
 # number of lhs samples (good for a configuration file)?
 n_lhs = 1000
 
@@ -37,7 +39,7 @@ fp_csv_attribute_climate_id = os.path.join(dir_ref, "ri_attribute_climate_id.csv
 fp_csv_baseline_trajectory_model_input_data = os.path.join(dir_ref, "ri_baseline_trajectory_model_input_data.csv")
 fp_csv_climate_deltas = os.path.join(dir_ref, "ri_climate_deltas.csv")
 fp_csv_climate_deltas_annual = os.path.join(dir_ref, "ri_climate_deltas_annual.csv")
-
+fp_xlsx_strategy_inputs = os.path.join(dir_ref, "strategy_table_inputs.xlsx")
 
 ##  some functions
 def build_dict(df_in):

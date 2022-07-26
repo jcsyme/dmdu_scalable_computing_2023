@@ -94,6 +94,9 @@ def ri_water_resources_model(
     # default values; levers can be incorporated later using df_in
     dict_default_levers = md_dict_default_levers
 ):
+    """
+        This is another application for these quotes
+    """
     
     # get time steps (ensure this is run ONLY for a single scenario)
     df_in = df_in.sort_values(by = ["year", "month"]).reset_index(drop = True)
