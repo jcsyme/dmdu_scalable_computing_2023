@@ -15,6 +15,10 @@ range_delta_fut = list(range(2046, 2056))
 # number of lhs samples (good for a configuration file)?
 n_lhs = 1000
 
+# setup some shared fields
+field_key_future = "future_id"
+field_key_strategy = "strategy_id"
+field_key_primary = "primary_id"
 
 ##  some directory stuff
 dir_py = os.path.dirname(os.path.realpath(__file__)) # this finds the current directory and identifies dir_py as the python directory containing setup_analysis.py when it is imported

@@ -92,7 +92,8 @@ def ri_water_resources_model(
     dict_initial_states = md_dict_initial_states, 
     dict_parameters = md_dict_parameters, 
     # default values; levers can be incorporated later using df_in
-    dict_default_levers = md_dict_default_levers
+    dict_default_levers = md_dict_default_levers,
+    id_primary: int = None
 ):
     """
         This is another application for these quotes
@@ -411,7 +412,10 @@ def ri_water_resources_model(
     t1 = time.time()  
     print("RI model done in %s seconds."%(round(t1 - t0, 2)))
     
-    return df_out
+    if id_primary is not None:
+        return id_primary, df_out
+    else:
+        return df_out
 
     
         

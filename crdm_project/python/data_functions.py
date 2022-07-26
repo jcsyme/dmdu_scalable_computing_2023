@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-import pyDOE as pyd
+import pyDOE2 as pyd
 
 ##  GET ANNUAL INCREASES IN MULTIPLICATIVE SCALAR TO GET CORRECT DELTAS
 def get_annual_increase(
@@ -92,7 +92,8 @@ def apply_delta_factor(
 def generate_lhs_samples(
     n: int, 
     dict_ranges: dict,
-    dict_values_future_0: dict = None
+    dict_values_future_0: dict = None,
+    field_future_id: str = "future_id"
 ):
 
     """
@@ -115,8 +116,8 @@ def generate_lhs_samples(
     mat_lhs_transformed = np.concatenate([base_values_f0, mat_lhs_transformed], axis = 0)
     # now, create a data frame associated with each LHS trial and add a future id
     df_lhs = pd.DataFrame(mat_lhs_transformed, columns = all_variables)
-    df_lhs["future_id"] = range(0, n + 1)
-    df_lhs = df_lhs[["future_id"] + all_variables]
+    df_lhs[field_future_id] = range(0, n + 1)
+    df_lhs = df_lhs[[field_future_id] + all_variables]
     
     return df_lhs
     
@@ -194,7 +195,8 @@ def get_climate_factor_deltas(
     year_base_uncertainty: int, #max(sa.model_historical_years)
     drop_climate_delta_duplicate_keys: bool = True,
     field_future_id: str = "future_id",
-    fields_date: list = ["year", "month"]
+    fields_date: list = ["year", "month"],
+    field_append_w_delta: str = "w_delta"
 ) -> pd.DataFrame:
     
     """
@@ -243,8 +245,8 @@ def get_climate_factor_deltas(
                 year_base_uncertainty,
                 field
             )
-            df_delta = df_delta[fields_date + [f"{field}_w_delta"]]
-            df_delta.rename(columns = {f"{field}_w_delta": field}, inplace = True)
+            df_delta = df_delta[fields_date + [f"{field}_{field_append_w_delta}"]]
+            df_delta.rename(columns = {f"{field}_{field_append_w_delta}": field}, inplace = True)
             df_delta_cur.append(df_delta[[field]])
         # no need to merge, so we'll do a horizontal concatenation
         df_delta_cur = pd.concat(df_delta_cur, axis = 1).reset_index(drop = True)
