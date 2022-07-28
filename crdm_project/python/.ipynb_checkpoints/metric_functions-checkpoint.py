@@ -1,7 +1,43 @@
 import pandas as pd
 import numpy as np
 
+
+# mean groundwater metric
+def get_mean_groundwater(
+    df_cur: pd.DataFrame,
+    field_key_primary: str = "primary_id",
+    field_year: str = "year",
+    last_n_years: int = 10
+) -> pd.DataFrame:
+
+    return get_mean_value_over_period(
+        df_cur,
+        field_key_primary,
+        "mean_groundwater_storage_last_ten_years_m3",
+        "groundwater_storage_m3",
+        field_year,
+        last_n_years
+    )
+
+# mean reservoir metric
 def get_mean_reservoir(
+    df_cur: pd.DataFrame,
+    field_key_primary: str = "primary_id",
+    field_year: str = "year",
+    last_n_years: int = 10
+) -> pd.DataFrame:
+
+    return get_mean_value_over_period(
+        df_cur,
+        field_key_primary,
+        "mean_reservoir_storage_last_ten_years_m3",
+        "reservoir_storage_m3",
+        field_year,
+        last_n_years
+    )
+
+# mean reservoir or groundwater metric
+def get_mean_value_over_period(
     df_cur: pd.DataFrame,
     field_key_primary: str = "primary_id",
     field_metric: str = "mean_reservoir_storage_last_ten_years_m3",
@@ -19,7 +55,7 @@ def get_mean_reservoir(
 
     return df_metric
 
-
+# unacceptable unmet demand
 def get_unacceptable_unmet_demand(
     df_cur: pd.DataFrame,
     field_key_primary: str = "primary_id",
@@ -28,8 +64,8 @@ def get_unacceptable_unmet_demand(
     field_metric_prop: str = "proportion_unacceptable_unmet_demand",
     field_month: str = "month",
     field_year: str = "year",
-    thresh_count: int = 6,
-    thresh_demand: float = 0.2
+    thresh_count: int = 4,
+    thresh_demand: float = 0.15
 ) -> pd.DataFrame:
     
     vec_exceed_thresh_demand = [int(x > thresh_demand) for x in list(df_cur[field_measure])]

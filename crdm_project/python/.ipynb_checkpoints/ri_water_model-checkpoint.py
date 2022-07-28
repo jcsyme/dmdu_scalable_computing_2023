@@ -392,7 +392,7 @@ def ri_water_resources_model(
         spill = max(0, x[7] - release)
 
         # for the RDM effect!
-        time.sleep(0.01)
+        #time.sleep(0.01)
         # new row
         out_vec = np.concatenate([
             x[0:4], 
