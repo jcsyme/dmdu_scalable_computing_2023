@@ -410,7 +410,7 @@ def ri_water_resources_model(
     df_out = pd.DataFrame(array_vars_out, columns = header_out)
     df_out = pd.concat([df_in[["year", "month"]], df_out], axis = 1)
     t1 = time.time()  
-    print("RI model done in %s seconds."%(round(t1 - t0, 2)))
+    #print("RI model done in %s seconds."%(round(t1 - t0, 2)))
     
     if id_primary is not None:
         return id_primary, df_out
