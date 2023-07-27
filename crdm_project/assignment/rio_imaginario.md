@@ -88,8 +88,8 @@ The Rio Imaginario water system is a simplified, illustrative water management s
 
 - 4 primary water transfers (represented as $x_{ij}$ in the model—transfer from source $S_i$ to demand $D_j$):
 	- $x_{11}$: Water pumped from groundwater to the satisfy agricultural demand (no capacity constraint).
-	- $x_{12}$: Irrigation canals that transfer water from the reservoir to the agricultural node (maximum transfer capacity of 2.5 $\mbox{m}^3/\mbox{s}$).
-	- $x_{21}$: Water pumped from groundwater to satisfy municipal demand (maximum pumping rate of 2.5 $\mbox{m}^3/\mbox{s}$).
+	- $x_{12}$: Water pumped from groundwater to satisfy municipal demand (maximum pumping rate of 2.5 $\mbox{m}^3/\mbox{s}$).
+	- $x_{21}$: Irrigation canals that transfer water from the reservoir to the agricultural node (maximum transfer capacity of 2.5 $\mbox{m}^3/\mbox{s}$).
 	- $x_{22}$: Water transferred from the reservoir to the municipal node (maximum water transfer rate of 10 $\mbox{m}^3/\mbox{s}$).
 
 
@@ -129,9 +129,9 @@ The model produces time series outputs for 26 variables.
 - `year`: The year of the output
 - `month`: The month of the output
 - `x_11_m3`: Water provided to agriculture from groundwater, $\mbox{m}^3$.
-- `x_12_m3`: Water provided to agriculture from the reservoir, $\mbox{m}^3$.
-- `x_21_m3`: Water provided to CI from groundwater, $\mbox{m}^3$.
-- `x_22_m3`: Water provided to CI from the reservoir, $\mbox{m}^3$.
+- `x_12_m3`: Water provided to municipal from groundwater, $\mbox{m}^3$.
+- `x_21_m3`: Water provided to agriculture from the reservoir, $\mbox{m}^3$.
+- `x_22_m3`: Water provided to municipal from the reservoir, $\mbox{m}^3$.
 - `d_1_m3`: Adjusted (post-recycling) demand for agriculture, $\mbox{m}^3$.
 - `d_2_m3`: Adjusted (post-recycling) demand at CI, $\mbox{m}^3$.
 - `d_3_m3`: Streamflow requirement at SG-2 ($D_3$), $\mbox{m}^3$.

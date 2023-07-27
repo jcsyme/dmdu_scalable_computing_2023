@@ -1,0 +1,7 @@
+strategy_id,strategy_name
+0,strategy_table_base
+1,increase_reservoir
+2,increase_efficiency
+3,increase_wwtp_cap
+4,inc_res_and_eff
+5,inc_res_and_eff_and_wwtp

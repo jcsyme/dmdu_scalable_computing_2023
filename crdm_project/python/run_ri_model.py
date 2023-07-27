@@ -321,6 +321,7 @@ def main():
 
 
     ##  RUN MODEL IN PARALLEL USING DATA
+
     # start the MP pool for asynchronous parallelization
     t0_par_async = time.time()
     print("Starting pool.async()...")
@@ -366,12 +367,12 @@ def main():
     # export data
     dir_return = os.path.join(sa.dir_out, sa.analysis_name)
     dict_out = {
-        os.path.join(dir_return, sa.fn_csv_attribute_future_id): df_lhs,
-        os.path.join(dir_return, sa.fn_csv_attribute_strategy_id): df_attr_strategy,
-        os.path.join(dir_return, sa.fn_csv_strategies): df_strategies,
-        os.path.join(dir_return, sa.fn_csv_attribute_primary_id): df_attribute_primary,
-        os.path.join(dir_return, sa.fn_csv_futures): df_futures,
-        os.path.join(dir_return, sa.fn_csv_metrics): df_return
+        sa.fn_csv_attribute_future_id: df_lhs,
+        sa.fn_csv_attribute_strategy_id: df_attr_strategy,
+        sa.fn_csv_strategies: df_strategies,
+        sa.fn_csv_attribute_primary_id: df_attribute_primary,
+        sa.fn_csv_futures: df_futures,
+        sa.fn_csv_metrics: df_return
     }
     write_output_csvs(dir_return, dict_out)
 

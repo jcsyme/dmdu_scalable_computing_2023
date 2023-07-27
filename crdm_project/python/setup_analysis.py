@@ -3,7 +3,7 @@ import os, os.path
 ##  analytical staging - these might be shared across files
 
 # set a name for this run (good for a configuration file)
-analysis_name = "crdm_project_20220728"
+analysis_name = "crdm_project_20220728_100fut"
 # export images (good for a configuration file)?
 export_image_q = False
 # setup some shared fields
@@ -17,7 +17,7 @@ field_time_year = "year"
 model_historical_years = list(range(2011, 2021))
 model_projection_years = list(range(2021, 2056))
 # number of lhs samples (good for a configuration file)?
-n_lhs = 10
+n_lhs = 100
 # set some climate info
 range_delta_base = list(range(2011, 2021))
 range_delta_fut = list(range(2046, 2056))
@@ -33,7 +33,7 @@ dir_ed = os.path.join(dir_proj, "experimental_design")
 dir_out = os.path.join(dir_proj, "out")
 dir_ref = os.path.join(dir_proj, "ref")
 
-# make directories if they don't exist 
+# make directories if they don't exist
 if not os.path.exists(dir_ed):
     os.makedirs(dir_ed, exist_ok = True)
 if not os.path.exists(dir_out):
@@ -41,7 +41,7 @@ if not os.path.exists(dir_out):
 if not os.path.exists(dir_ref):
     print(f"WARNING: path {dir_ref} not found.")
 
-    
+
 
 ##  set some file names and paths
 
@@ -62,4 +62,3 @@ fp_xlsx_strategy_inputs = os.path.join(dir_ref, "strategy_table_inputs.xlsx")
 ##  some functions
 def build_dict(df_in):
     return dict([x for x in zip(df_in.iloc[:, 0], df_in.iloc[:, 1])])
-    

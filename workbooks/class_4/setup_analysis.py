@@ -10,6 +10,9 @@ export_image_q = False
 # model years
 model_historical_years = list(range(2018, 2021))
 model_projection_years = list(range(2021, 2056))
+# set some climate info
+range_delta_base = list(range(2011, 2021))
+range_delta_fut = list(range(2046, 2056))
 # number of lhs samples (good for a configuration file)?
 n_lhs = 1000
 
