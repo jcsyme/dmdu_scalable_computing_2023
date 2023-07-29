@@ -4,7 +4,8 @@ import os, os.path
 ##  analytical staging - these might be shared across files
 
 # set a name for this run (good for a configuration file)
-analysis_name = "run_20220725_test"
+analysis_name = "run_20230728_test"
+
 # export images (good for a configuration file)?
 export_image_q = False
 # model years

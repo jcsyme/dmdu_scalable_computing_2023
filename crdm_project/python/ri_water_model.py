@@ -109,6 +109,7 @@ def ri_water_resources_model(
     # setup indices
     inds_supply = [1, 2]
     inds_demand = [1, 2, 3]
+    
     # stream flow requirements
     inds_demand_sfr = [3]
     inds_demand_no_sfr = [x for x in inds_demand if (x not in inds_demand_sfr)]
@@ -134,7 +135,12 @@ def ri_water_resources_model(
         param_omega_runoff_prop = param_omega_runoff_prop/sc_precip_prop
 
     # get precip means and lookback values
-    df_precip_means = df_in[["month", "precipitation_mm"]].groupby(["month"]).agg({"month": "first", "precipitation_mm": "mean"}).reset_index(drop = True)
+    df_precip_means = (
+        df_in[["month", "precipitation_mm"]]
+        .groupby(["month"])
+        .agg({"month": "first", "precipitation_mm": "mean"})
+        .reset_index(drop = True)
+    )
     m_p1 = date_shift(ym_tup_0, -1)[1]
     m_p2 = date_shift(ym_tup_0, -2)[1]
     # previous precip based on averages
@@ -414,8 +420,8 @@ def ri_water_resources_model(
     
     if id_primary is not None:
         return id_primary, df_out
-    else:
-        return df_out
+
+    return df_out
 
     
         

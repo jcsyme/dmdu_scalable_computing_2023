@@ -64,6 +64,7 @@ def apply_delta_factor(
     # get current observed difference
     mean_base = np.mean(np.array(df_annual_totals_delta_base[field_apply]))
     mean_fut = np.mean(np.array(df_annual_totals_delta_mid[field_apply]))
+    
     # get appropriate annual increases to applly
     annual_increase = get_annual_increase(
         delta, 
@@ -161,8 +162,10 @@ def get_linear_delta_trajectories_by_future(
     df_db = [mat_nominal_traj for x in range(n)]
     vec_fut = np.concatenate([x*np.ones(len(all_time_periods)) for x in range(0, n)])
     vec_time_periods = np.concatenate([all_time_periods for x in range(0, n)])
+    
     # initialize
     mat_tmp = np.array(df_lhs.sort_values(by = [field_future_id])[all_variables]) - 1
+    
     # use the outer product to build all potential deltas with the del_template ramp in place 
     mat_expand_traj = np.outer(mat_tmp, vec_del_template)
     mat_expand_traj = mat_expand_traj.reshape(n, k, T)
@@ -170,9 +173,11 @@ def get_linear_delta_trajectories_by_future(
     # there is a faster way, but loop over each futre to build adjustments
     for f in enumerate(all_futures):
         ind, f = f
+        
         # get the lhs-transformed component to multiply by the nominal value in the last year
         mat_add = mat_expand_traj[ind].transpose() * vec_nom
         mat_new = mat_add + mat_nominal_traj
+        
         # we know that the futures align because both df_lhs and all_variabels are sorted by future id
         df_db[ind] = mat_new
 
@@ -245,9 +250,11 @@ def get_climate_factor_deltas(
                 year_base_uncertainty,
                 field
             )
+            
             df_delta = df_delta[fields_date + [f"{field}_{field_append_w_delta}"]]
             df_delta.rename(columns = {f"{field}_{field_append_w_delta}": field}, inplace = True)
             df_delta_cur.append(df_delta[[field]])
+            
         # no need to merge, so we'll do a horizontal concatenation
         df_delta_cur = pd.concat(df_delta_cur, axis = 1).reset_index(drop = True)
         df_delta_cur[field_future_id] = future_id
