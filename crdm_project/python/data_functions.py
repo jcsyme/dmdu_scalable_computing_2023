@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import pyDOE2 as pyd
 
-##  GET ANNUAL INCREASES IN MULTIPLICATIVE SCALAR TO GET CORRECT DELTAS
+
 def get_annual_increase(
     delta: float, 
     mean_base: float, 
@@ -12,13 +12,17 @@ def get_annual_increase(
     df_fut: pd.DataFrame,
     field_apply: str,
     field_year: str = "year"
-):
+) -> np.ndarray:
     """
-    calculate an annual increase to apply baseed on a delta factor
+    Calculate an annual increase to apply baseed on a delta factor
     
+    Function Arguments
+    ------------------
     - delta: the climate delta to apply (factor)
-    - mean_base:  mean value of input time series during base time range used to estimate delta
-    - mean_fut:  mean value of input time series during future time range used to estimate delta
+    - mean_base:  mean value of input time series during base time range used to 
+        estimate delta
+    - mean_fut:  mean value of input time series during future time range used 
+        to estimate delta
     - range_delta_fut: list of years defining the time period for future delta
     - df_fut: data frame giving input time series
     - field_apply: field in df_fut to apply delta to
@@ -43,7 +47,10 @@ def apply_delta_factor(
     field_delta_scale: str = "delta_scale",
     field_year: str = "year",
     scale_delta_for_inflection: bool = False
-):
+) -> pd.DataFrame:
+    """
+
+    """
 
     ##  AGGREGATE BY YEAR
     
@@ -89,7 +96,6 @@ def apply_delta_factor(
 
 
 
-##  generate lhs samples from n and a dictionary of ranges
 def generate_lhs_samples(
     n: int, 
     dict_ranges: dict,
@@ -98,10 +104,16 @@ def generate_lhs_samples(
 ):
 
     """
-        Generate dataframe of all LHS trials that are adjusted
-        - n: number of trials
-        - dict_ranges: dictionary of form {variable: [min, max], ...} where variable is the variable and min/max are the lower/upper bound scalars
-        - dict_values_future_0: dictionary of form {variable: val, ...} where variable is the variable and val gives the value to specify for future 0. If default of None is specifed, will specify 1 for all values.
+    Generate dataframe of all LHS trials that are adjusted
+
+    Function Arguments
+    ------------------
+    - n: number of trials
+    - dict_ranges: dictionary of form {variable: [min, max], ...} where variable 
+        is the variable and min/max are the lower/upper bound scalars
+    - dict_values_future_0: dictionary of form {variable: val, ...} where 
+        variable is the variable and val gives the value to specify for future 
+        0. If default of None is specifed, will specify 1 for all values.
     """
     
     all_variables = sorted(list(dict_ranges.keys()))
@@ -115,6 +127,7 @@ def generate_lhs_samples(
     mat_lhs_transformed = vec_min + mat_lhs*(vec_max - vec_min)
     base_values_f0 = np.array([[dict_values_future_0[x] for x in all_variables]])
     mat_lhs_transformed = np.concatenate([base_values_f0, mat_lhs_transformed], axis = 0)
+
     # now, create a data frame associated with each LHS trial and add a future id
     df_lhs = pd.DataFrame(mat_lhs_transformed, columns = all_variables)
     df_lhs[field_future_id] = range(0, n + 1)
@@ -130,18 +143,27 @@ def get_linear_delta_trajectories_by_future(
     t0_vary: int, 
     t1_vary: int,
     field_future_id: str = "future_id",
-    field_time_period: str = "time_period"
+    field_time_period: str = "time_period",
 ):
     """
-        Apply deltas to a base trajectory. Returns a data frame of trajectories modified to reflect climate deltas.
-    
-        - df_base_trajectory: data frame with base trajectories to modify with deltas
-        - df_lhs: data frame with scalars to apply to base trajectories by last time period, indexed by key 'field_future_id'
-        - t0_vary: last time period without uncertainty
-        - t1_vary: final time period of uncertainty
-        - field_future_id: default 'future_id'. Must be contained in df_lhs. Used to determine scenario key values to loop over.
-        field_time_period: default is 'time_period'. Used for determining scaling of deltas
-        
+    Apply deltas to a base trajectory. Returns a data frame of trajectories 
+        modified to reflect climate deltas.
+
+    Function Arguments
+    ------------------
+    - df_base_trajectory: data frame with base trajectories to modify with 
+        deltas
+    - df_lhs: data frame with scalars to apply to base trajectories by last 
+        time period, indexed by key 'field_future_id'
+    - t0_vary: last time period without uncertainty
+    - t1_vary: final time period of uncertainty
+
+    Keyword Arguments
+    -----------------
+    - field_future_id: default 'future_id'. Must be contained in df_lhs. Used to 
+        determine scenario key values to loop over.
+    - field_time_period: default is 'time_period'. Used for determining scaling 
+        of deltas
     """
     
     # initilize key variables
@@ -190,7 +212,6 @@ def get_linear_delta_trajectories_by_future(
 
 
 
-## get a data frame of climate deltas
 def get_climate_factor_deltas(
     df_base_climate_trajectory: pd.DataFrame,
     df_climate_deltas_annual: pd.DataFrame,
@@ -201,22 +222,34 @@ def get_climate_factor_deltas(
     drop_climate_delta_duplicate_keys: bool = True,
     field_future_id: str = "future_id",
     fields_date: list = ["year", "month"],
-    field_append_w_delta: str = "w_delta"
+    field_append_w_delta: str = "w_delta",
 ) -> pd.DataFrame:
-    
     """
-        Apply climate deltas to a base trajectory. Returns a data frame of trajectories modified to reflect climate deltas.
-    
-        - df_base_climate_trajectory: data frame with base climate trajectories to modify with deltas
-        - df_climate_deltas_annual: data frame with deltas to apply to base climate trajectories, indexed by key 'field_future_id'
-        - dict_field_traj_to_field_delta: dictionary of form {field_traj: field_delta, ...} where field_traj is a field in df_base_climate_trajectory to be modified and field_delta is a field in df_annual_deltas to use to find the delta 
-        - field_future_id: key value in df_annual_deltas to use to loop to apply deltas
-        - years_delta_base: list of years (integers) that the delta changes from
-        - years_delta_fut: list of years (integers) used to calcualte the delta target as change from base
-        - year_base: base year, or last year before uncertainty begins
-        - drop_climate_delta_duplicate_keys: if the climate data frame contains multiple instances of the key, drop duplicate rows? If True, keeps first instance by default. 
-        - field_future_id: default 'future_id'. Must be contained in df_climate_deltas_annual. Used to determine scenario key values to loop over.
-        - fields_date: default ["year", "month"]. Fields necessary to define dates. Must include year.
+    Apply climate deltas to a base trajectory. Returns a data frame of 
+        trajectories modified to reflect climate deltas.
+
+    - df_base_climate_trajectory: data frame with base climate trajectories to 
+        modify with deltas
+    - df_climate_deltas_annual: data frame with deltas to apply to base climate 
+        trajectories, indexed by key 'field_future_id'
+    - dict_field_traj_to_field_delta: dictionary of form 
+        {field_traj: field_delta, ...} where field_traj is a field in 
+        df_base_climate_trajectory to be modified and field_delta is a field in 
+        df_annual_deltas to use to find the delta 
+    - field_future_id: key value in df_annual_deltas to use to loop to apply 
+        deltas
+    - years_delta_base: list of years (integers) that the delta changes from
+    - years_delta_fut: list of years (integers) used to calcualte the delta 
+        target as change from base
+    - year_base: base year, or last year before uncertainty begins
+    - drop_climate_delta_duplicate_keys: if the climate data frame contains 
+        multiple instances of the key, drop duplicate rows? If True, keeps first 
+        instance by default. 
+    - field_future_id: default 'future_id'. Must be contained in 
+        df_climate_deltas_annual. Used to determine scenario key values to loop 
+        over.
+    - fields_date: default ["year", "month"]. Fields necessary to define dates.
+         Must include year.
     """
 
     # initialiez some important pieces
@@ -273,11 +306,13 @@ def get_strategy_table(
     fields_sort_additional: list = ["time_period"]
 ) -> tuple:
     """
-        Read an XLSX file containing strategies in each sheet. If the field field_strategy_id is not specified in each sheet, it will be inferred.
-        
-        - fp_xlsx_strategies: file path to Excel workbooks
-        - field_strategy_id: field specifying the strategy id
-        - fields_sort_additional: additional fields to sort by after field_strategy_id
+    Read an XLSX file containing strategies in each sheet. If the field 
+        field_strategy_id is not specified in each sheet, it will be inferred.
+    
+    - fp_xlsx_strategies: file path to Excel workbooks
+    - field_strategy_id: field specifying the strategy id
+    - fields_sort_additional: additional fields to sort by after 
+        field_strategy_id
     """
     
     # read in data from file
