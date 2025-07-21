@@ -2,11 +2,14 @@ name: dmdu
 channels:
   - conda-forge
 dependencies:
-  - ema_workbench==2.5.3
-  - matplotlib==3.10.1
-  - numpy==2.2.2
-  - openpyxl==3.1.2
-  - pandas==2.2.3
-  - pyDOE2==1.3.0
-  - scipy==1.15.1
-  - SQLAlchemy==2.0.37
+  - python==3.11
+  - ema_workbench=2.5.3
+  - ipython=8.28.0
+  - jupyter=1.1.1
+  - matplotlib=3.10.1
+  - numpy=2.2.2
+  - openpyxl=3.1.2
+  - pandas=2.2.3
+  - pyDOE2=1.3.0
+  - scipy=1.15.1
+  - SQLAlchemy=2.0.37
