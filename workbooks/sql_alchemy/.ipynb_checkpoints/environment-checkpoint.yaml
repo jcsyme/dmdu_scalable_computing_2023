@@ -1,0 +1,7 @@
+name: explore_sql
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pandas=2.2.1
+  - SQLAlchemy=2.0.29
